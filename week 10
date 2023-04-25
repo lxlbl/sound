@@ -1,0 +1,108 @@
+import abc
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud
+from PIL import Image
+import librosa
+import jieba
+from collections import Counter
+fpath="C:/Users/DELL/Desktop/python数据分析/python2/weiruan/msyh.ttc"
+#抽象类Plotter
+class Plotter(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def plot(self,data, *args, **kwargs):
+        pass
+#定义类Point,充当adaptee的角色
+class Point:
+    def __init__(self,p):
+        self._p=p
+    def draw_point(self):
+        plt.scatter(*self._p)
+#实现类PointPlotter,作为适配器，实现数据点型数据的绘制
+class PointPlotter(Plotter):
+    def plot(self,data,*args,**kwargs):
+        for p in data:
+            pp=Point(p)
+            pp.draw_point()
+        plt.show()
+#实现类ArrayPlotter, 实现三维型数据的绘制        
+class ArrayPlotter(Plotter):
+    def plot(self,data,*args,**kwargs):
+        x=[]
+        y=[]
+        z=[]
+        for p in data:
+            x.append(p[0])
+            y.append(p[1])
+            z.append(p[2])
+        ax=plt.axes(projection='3d')
+        ax.scatter3D(x,y,z)
+        plt.show()
+#实现类TextPlotter，实现文本型数据的绘制     
+class TextPlotter(Plotter):
+    def plot(self,data,*args,**kwargs):
+        words=list(jieba.cut(data))
+        dwords=Counter(words)#对词语进行计数并用列表形式表现出来
+        dwords0=dict()
+        for k,v in dwords.items():
+            if v>2:
+              dwords0[k]=v  #去掉频数过少的词语
+        #d=sorted(dwords.items(),key=lambda item:item[1])
+        #词云展示
+        wd=WordCloud(font_path=fpath)
+        wd.fit_words(dwords0)
+        plt.imshow(wd)
+        plt.axis('off')
+        plt.show()
+#实现类ImageDraw，作为被适配器，实现展示图片的功能
+class ImageDraw:
+    def __init__(self,lim):
+        self._lim=lim#图片列表
+    def display(self):
+        plt.figure()
+        for i in range(len(self._lim)):
+            plt.subplot(2,2,i+1)#确定每个图片的位置
+            plt.imshow(self._lim[i])
+        plt.show()
+#实现类ImagePlotter，作为适配器，实现图片型数据的绘制
+class ImagePlotter(Plotter):
+    def plot(self,data,*args,**kwargs):
+        lim=[]
+        for path in data:
+            im=Image.open(path)#路径打开成图片
+            lim.append(im)
+        imagedraw=ImageDraw(lim)
+        imagedraw.display()
+#实现类MusickPlotter，绘制音频
+class MusickPlotter(Plotter):
+    def plot(self,data,*args,**kwargs):
+        y,sr=librosa.load(data)
+        plt.figure()
+        plt.plot(y[:5000])
+        plt.show()
+        plt.close()
+#主函数实例化上面各种类并调用方法
+def main():
+    f='C:/Users/DELL/Desktop/python数据分析/ma.txt'
+    data1=[(1,2),(2,3),(7,3),(5,4)]
+    data2=[(1,2,3),(2,3,3),(8,3.3,3)]
+    with open(f,'r',encoding='utf-8') as f0:
+        for line in f0:
+            data3=''.join(line)
+    f1='C:/Users/DELL/Desktop/python数据分析/lfw/Abdullah_Gul/Abdullah_Gul_0001.jpg'
+    f2='C:/Users/DELL/Desktop/python数据分析/lfw/Abdullah_Gul/Abdullah_Gul_0002.jpg'
+    f3='C:/Users/DELL/Desktop/python数据分析/lfw/Abdullah_Gul/Abdullah_Gul_0003.jpg'
+    f4='C:/Users/DELL/Desktop/python数据分析/lfw/Abdullah_Gul/Abdullah_Gul_0004.jpg'
+    data4=[f1,f2,f3,f4]
+    data5='C:/Users/DELL/Desktop/python数据分析/test.mp3'
+    pp=PointPlotter()
+    pp.plot(data1)
+    apl=ArrayPlotter()
+    apl.plot(data2)
+    tp=TextPlotter()
+    tp.plot(data3)
+    ip=ImagePlotter()
+    ip.plot(data4)
+    mkp=MusickPlotter()
+    mkp.plot(data5)
+if __name__=='__main__': main()#代码实现
+    
