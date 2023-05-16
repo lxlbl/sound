@@ -1,0 +1,69 @@
+from gevent import monkey
+monkey.patch_all()  
+import gevent
+import asyncio
+#import aiohttp
+import aiofiles
+import requests
+from lxml import etree
+from tqdm import tqdm
+import re
+
+GEVENT_SUPPORT=True
+class VoaClawer:
+    def __init__(self,url,headers):
+        self._url=url
+        self._links=[]
+        self._mlist=[]
+        self._headers=headers
+    
+    #从网址中获取新的地址列表
+    def get_link(self):
+        response = requests.get(self._url)
+        html = etree.HTML(response.text)
+        for j in range(50):
+            self._links = self._links+html.xpath('//*[@id="righter"]/div[3]/ul/li[%s]/a/@href'%str(j))
+        print('1'*10)
+    #从get_link中获取的链接获取mp3文件链接
+    def music_link(self,url):
+        response = requests.get(url,headers=self._headers)
+        self._mlist = self._mlist+list(set(re.findall(r'https://.+?\.mp3', response.text)))
+        print('2'*10)  
+           
+    #保存文件
+    async def save_music(self,fname,response_text):
+        async with aiofiles.open(fname,'wb') as f:
+            await f.write(response_text)
+        print('3'*10)    
+            
+    def main1(self):
+        self.get_link()
+        jobs=[]
+        for link in tqdm(self._links[:5]):
+            url='https://www.51voa.com'+link
+            jobs.append(gevent.spawn(self.music_link,url))
+        gevent.joinall(jobs)
+        
+    async def main2(self):
+        self.main1()
+        tasks=[]
+        for murl in tqdm(self._mlist):
+            response_text = requests.get(murl,headers=self._headers).content
+            fname = murl[murl.rfind('/')+1:]
+            tasks.append(self.save_music(fname,response_text))
+        await asyncio.gather(*tasks)
+        
+    def main3(self):
+        asyncio.run(self.main2())
+
+def main():
+    headers = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.97 Safari/537.36'
+    }
+    url = 'https://www.51voa.com/VOA_Standard_3.html'
+    vc = VoaClawer(url,headers)
+    vc.main3()
+if __name__=='__main__':
+    main()
+    
+        
